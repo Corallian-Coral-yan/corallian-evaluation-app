@@ -8,5 +8,5 @@ export default withAuth({
 
 // Protect all routes under /annotator
 export const config = {
-  matcher: ["/annotator"],
+  // matcher: ["/annotator"],
 };

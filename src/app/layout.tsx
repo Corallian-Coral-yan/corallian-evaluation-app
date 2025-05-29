@@ -8,6 +8,12 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  if (typeof window !== "undefined") {
+    console.log("CLIENT");
+  } else {
+    console.log("SERVER");
+  }
+
   return (
     <html lang="en">
       <body>
