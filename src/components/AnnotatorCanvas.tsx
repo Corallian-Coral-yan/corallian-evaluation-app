@@ -17,6 +17,9 @@ import {
   PencilIcon,
   ArrowUturnLeftIcon,
   TrashIcon,
+  PlusIcon,
+  MinusIcon,
+  ArrowPathRoundedSquareIcon,
 } from "@heroicons/react/24/outline";
 
 type Point = { x: number; y: number };
@@ -38,14 +41,31 @@ export default function AnnotatorCanvas() {
   const [currentLasso, setCurrentLasso] = useState<LassoShape>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hoveredShape, setHoveredShape] = useState<HoverInfo>(null);
+  const [stageScale, setStageScale] = useState(1);
+  const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
+  const [lastPanPos, setLastPanPos] = useState<Point | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+
+  const MIN_SCALE = 0.5;
+  const MAX_SCALE = 3;
+  const SCALE_BY = 1.1;
 
   const [bgImage, status] = useImage("/coral-1.jpg");
   const stageRef = useRef<any>(null);
 
   const handleMouseDown = useCallback(
     (e: any) => {
-      const pos = e.target.getStage().getPointerPosition();
+      const stage = e.target.getStage();
+      const pos = stage.getPointerPosition();
       if (!pos) return;
+
+      if (e.evt.button === 2) {
+        // right-click for panning
+        setIsPanning(true);
+        setLastPanPos(pos);
+        return;
+      }
+
       setIsDrawing(true);
 
       if (mode === "rect") {
@@ -59,9 +79,19 @@ export default function AnnotatorCanvas() {
 
   const handleMouseMove = useCallback(
     (e: any) => {
-      if (!isDrawing) return;
-      const pos = e.target.getStage().getPointerPosition();
+      const stage = e.target.getStage();
+      const pos = stage.getPointerPosition();
       if (!pos) return;
+
+      if (isPanning && lastPanPos) {
+        const dx = pos.x - lastPanPos.x;
+        const dy = pos.y - lastPanPos.y;
+        setStagePosition((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+        setLastPanPos(pos);
+        return;
+      }
+
+      if (!isDrawing) return;
 
       if (mode === "rect" && newRect) {
         setNewRect({
@@ -73,19 +103,69 @@ export default function AnnotatorCanvas() {
         setCurrentLasso((prev) => [...prev, pos]);
       }
     },
-    [isDrawing, mode, newRect]
+    [isDrawing, mode, newRect, isPanning, lastPanPos]
   );
 
-  const handleMouseUp = useCallback(() => {
-    if (mode === "rect" && newRect) {
-      setRects((prev) => [...prev, newRect]);
-      setNewRect(null);
-    } else if (mode === "lasso") {
-      setLassos((prev) => [...prev, currentLasso]);
-      setCurrentLasso([]);
-    }
-    setIsDrawing(false);
-  }, [mode, newRect, currentLasso]);
+  const handleMouseUp = useCallback(
+    (e: any) => {
+      if (isPanning) {
+        setIsPanning(false);
+        setLastPanPos(null);
+        return;
+      }
+
+      if (mode === "rect" && newRect) {
+        setRects((prev) => [...prev, newRect]);
+        setNewRect(null);
+      } else if (mode === "lasso") {
+        setLassos((prev) => [...prev, currentLasso]);
+        setCurrentLasso([]);
+      }
+
+      setIsDrawing(false);
+    },
+    [mode, newRect, currentLasso, isPanning]
+  );
+
+  const handleWheel = useCallback((e: any) => {
+    e.evt.preventDefault();
+    const stage = stageRef.current;
+    const oldScale = stage.scaleX();
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const mousePointTo = {
+      x: (pointer.x - stage.x()) / oldScale,
+      y: (pointer.y - stage.y()) / oldScale,
+    };
+
+    const direction = e.evt.deltaY > 0 ? 1 : -1;
+    let newScale = direction > 0 ? oldScale * SCALE_BY : oldScale / SCALE_BY;
+    newScale = Math.min(Math.max(newScale, MIN_SCALE), MAX_SCALE);
+
+    const newPos = {
+      x: pointer.x - mousePointTo.x * newScale,
+      y: pointer.y - mousePointTo.y * newScale,
+    };
+
+    setStageScale(newScale);
+    setStagePosition(newPos);
+  }, []);
+
+  const zoomIn = () => {
+    const newScale = Math.min(stageScale * SCALE_BY, MAX_SCALE);
+    setStageScale(newScale);
+  };
+
+  const zoomOut = () => {
+    const newScale = Math.max(stageScale / SCALE_BY, MIN_SCALE);
+    setStageScale(newScale);
+  };
+
+  const resetZoom = () => {
+    setStageScale(1);
+    setStagePosition({ x: 0, y: 0 });
+  };
 
   const handleUndo = () => {
     if (mode === "rect") setRects((prev) => prev.slice(0, -1));
@@ -118,7 +198,6 @@ export default function AnnotatorCanvas() {
     </>
   );
 
-  // Toolbar icons mapped properly to your imports
   const tools = [
     { tool: "rect", IconComponent: RectangleStackIcon, label: "Rectangle" },
     { tool: "lasso", IconComponent: PencilIcon, label: "Lasso" },
@@ -126,7 +205,7 @@ export default function AnnotatorCanvas() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
-      {/* Toolbar on left */}
+      {/* Toolbar */}
       <nav className="flex flex-col items-center gap-4 py-6 px-2 bg-white shadow-md border-r border-gray-200 w-16">
         {tools.map(({ tool, IconComponent, label }) => (
           <button
@@ -136,11 +215,7 @@ export default function AnnotatorCanvas() {
             className={`w-12 h-12 flex items-center justify-center rounded-md transition-colors duration-150
               ${mode === tool ? "bg-gray-200" : "hover:bg-gray-100"}`}
           >
-            <IconComponent
-              className="w-6 h-6 text-gray-700"
-              aria-label={label}
-              role="img"
-            />
+            <IconComponent className="w-6 h-6 text-gray-700" />
           </button>
         ))}
 
@@ -159,9 +234,34 @@ export default function AnnotatorCanvas() {
         >
           <TrashIcon className="w-6 h-6 text-gray-700" />
         </button>
+
+        {/* Zoom controls */}
+        <button
+          onClick={zoomIn}
+          title="Zoom In"
+          className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
+        >
+          <PlusIcon className="w-6 h-6 text-gray-700" />
+        </button>
+
+        <button
+          onClick={zoomOut}
+          title="Zoom Out"
+          className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
+        >
+          <MinusIcon className="w-6 h-6 text-gray-700" />
+        </button>
+
+        <button
+          onClick={resetZoom}
+          title="Reset View"
+          className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
+        >
+          <ArrowPathRoundedSquareIcon className="w-6 h-6 text-gray-700" />
+        </button>
       </nav>
 
-      {/* Canvas area */}
+      {/* Canvas */}
       <main className="flex-1 flex justify-center items-center p-6">
         <div className="rounded-xl overflow-hidden shadow-lg border border-gray-200 bg-white">
           {status === "loaded" && (
@@ -169,9 +269,15 @@ export default function AnnotatorCanvas() {
               ref={stageRef}
               width={800}
               height={600}
+              scaleX={stageScale}
+              scaleY={stageScale}
+              x={stagePosition.x}
+              y={stagePosition.y}
+              onContextMenu={(e) => e.evt.preventDefault()}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onWheel={handleWheel}
             >
               <Layer>
                 <KonvaImage image={bgImage} width={800} height={600} />
