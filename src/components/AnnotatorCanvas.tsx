@@ -11,6 +11,7 @@ import {
   Group,
 } from "react-konva";
 import useImage from "use-image";
+import { labelOptions } from "./modal/labelManager";
 import LabelModal from "@/components/modal/LabelModal";
 
 import {
@@ -37,6 +38,11 @@ type HoverInfo = {
 type RectWithLabel = RectShape & { label: string };
 type LassoWithLabel = { points: LassoShape; label: string };
 
+// === CATEGORY/ LABEL STATE ===
+const categories = Array.from(
+  new Set(labelOptions.map((label) => label.category).filter(Boolean))
+);
+
 export default function AnnotatorCanvas() {
   const [mode, setMode] = useState<"rect" | "lasso">("rect");
   const [rects, setRects] = useState<RectWithLabel[]>([]);
@@ -51,12 +57,22 @@ export default function AnnotatorCanvas() {
   const [isPanning, setIsPanning] = useState(false);
   const [labelingShape, setLabelingShape] = useState<{
     type: "rect" | "lasso";
-    index: number | null; // if editing existing shape, else null
-    newShape: any; // shape data being labeled
+    index: number | null;
+    newShape: any;
   } | null>(null);
 
-  const labelOptions = ["Coral", "Algae", "Rock", "Sand", "Other"];
-  const [selectedLabel, setSelectedLabel] = useState(labelOptions[0]);
+  // CATEGORY/LABEL STATE
+  const [selectedCategory, setSelectedCategory] = useState(categories[0]);
+  const [selectedLabel, setSelectedLabel] = useState(
+    labelOptions.find((l) => l.category === categories[0])?.code || ""
+  );
+
+  // Update selectedLabel when category changes
+  const handleSelectCategory = (category: string) => {
+    setSelectedCategory(category);
+    const firstLabel = labelOptions.find((l) => l.category === category);
+    setSelectedLabel(firstLabel ? firstLabel.code : "");
+  };
 
   const MIN_SCALE = 0.5;
   const MAX_SCALE = 3;
@@ -127,15 +143,22 @@ export default function AnnotatorCanvas() {
 
       if (mode === "rect" && newRect) {
         if (Math.abs(newRect.width) > 5 && Math.abs(newRect.height) > 5) {
-          setSelectedLabel(labelOptions[0]);
+          // Reset to first category/label for modal
+          setSelectedCategory(categories[0]);
+          const firstLabel = labelOptions.find(
+            (l) => l.category === categories[0]
+          );
+          setSelectedLabel(firstLabel ? firstLabel.code : "");
           setLabelingShape({ type: "rect", index: null, newShape: newRect });
         }
         setNewRect(null);
-      } 
-      
-      else if (mode === "lasso") {
+      } else if (mode === "lasso") {
         if (currentLasso.length > 2) {
-          setSelectedLabel(labelOptions[0]);
+          setSelectedCategory(categories[0]);
+          const firstLabel = labelOptions.find(
+            (l) => l.category === categories[0]
+          );
+          setSelectedLabel(firstLabel ? firstLabel.code : "");
           setLabelingShape({
             type: "lasso",
             index: null,
@@ -235,10 +258,11 @@ export default function AnnotatorCanvas() {
   const shapeTooltip =
     hoveredShape &&
     (() => {
-      const label =
+      const labelCode =
         hoveredShape.type === "Rectangle"
           ? rects[hoveredShape.index]?.label
           : lassos[hoveredShape.index]?.label;
+      const labelObj = labelOptions.find((l) => l.code === labelCode);
 
       return (
         <>
@@ -261,17 +285,13 @@ export default function AnnotatorCanvas() {
           <Text
             x={hoveredShape.x + 5}
             y={hoveredShape.y - 22}
-            text={`Label: ${label || "N/A"}`}
+            text={`Label: ${labelObj ? labelObj.name : labelCode || "N/A"}`}
             fontSize={12}
             fill="white"
           />
         </>
       );
     })();
-
-  // Utility to convert lasso points to flat array for Polygon
-  const lassoPointsFlat = (points: Point[]) =>
-    points.reduce((acc: number[], p) => acc.concat([p.x, p.y]), []);
 
   // Hover handlers for shapes
   const handleRectMouseEnter = (index: number) => {
@@ -286,6 +306,11 @@ export default function AnnotatorCanvas() {
   const handleLassoMouseLeave = () => {
     setHoveredShape(null);
   };
+
+  // Filter labels by selectedCategory for modal
+  const filteredLabels = labelOptions.filter(
+    (label) => label.category === selectedCategory
+  );
 
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
@@ -383,83 +408,89 @@ export default function AnnotatorCanvas() {
             {bgImage && <KonvaImage image={bgImage} width={900} height={600} />}
 
             {/* Rectangles */}
-            {rects.map((rect, i) => (
-              <Group
-                key={`rect-${i}`}
-                onMouseEnter={(e) => {
-                  e.target.getStage().container().style.cursor = "pointer";
-                  setHoveredShape({
-                    type: "Rectangle",
-                    index: i,
-                    x: e.target.x(),
-                    y: e.target.y(),
-                  });
-                }}
-                onMouseLeave={(e) => {
-                  e.target.getStage().container().style.cursor = "crosshair";
-                  setHoveredShape(null);
-                }}
-              >
-                <Rect
-                  x={rect.x}
-                  y={rect.y}
-                  width={rect.width}
-                  height={rect.height}
-                  stroke="red"
-                  strokeWidth={2}
-                  dash={[6, 4]}
-                  fill="rgba(255,0,0,0.15)"
-                />
-                <Text
-                  x={rect.x + 5}
-                  y={rect.y + 5}
-                  text={rect.label}
-                  fontSize={14}
-                  fill="red"
-                  fontStyle="bold"
-                />
-              </Group>
-            ))}
-
-            {/* Lassos */}
-            {lassos.map(({ points, label }, i) => (
-              <Group
-                key={`lasso-${i}`}
-                onMouseEnter={(e) => {
-                  e.target.getStage().container().style.cursor = "pointer";
-                  const firstPoint = points[0];
-                  setHoveredShape({
-                    type: "Lasso",
-                    index: i,
-                    x: firstPoint.x,
-                    y: firstPoint.y,
-                  });
-                }}
-                onMouseLeave={(e) => {
-                  e.target.getStage().container().style.cursor = "crosshair";
-                  setHoveredShape(null);
-                }}
-              >
-                <Line
-                  points={points.flatMap((p) => [p.x, p.y])}
-                  stroke="blue"
-                  strokeWidth={2}
-                  closed
-                  fill="rgba(0,0,255,0.15)"
-                  tension={0.3}
-                />
-                {points.length > 0 && (
+            {rects.map((rect, i) => {
+              const labelObj = labelOptions.find((l) => l.code === rect.label);
+              return (
+                <Group
+                  key={`rect-${i}`}
+                  onMouseEnter={(e) => {
+                    e.target.getStage().container().style.cursor = "pointer";
+                    setHoveredShape({
+                      type: "Rectangle",
+                      index: i,
+                      x: e.target.x(),
+                      y: e.target.y(),
+                    });
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.getStage().container().style.cursor = "crosshair";
+                    setHoveredShape(null);
+                  }}
+                >
+                  <Rect
+                    x={rect.x}
+                    y={rect.y}
+                    width={rect.width}
+                    height={rect.height}
+                    stroke="red"
+                    strokeWidth={2}
+                    dash={[6, 4]}
+                    fill="rgba(255,0,0,0.15)"
+                  />
                   <Text
-                    x={points[0].x + 5}
-                    y={points[0].y + 5}
-                    text={label}
+                    x={rect.x + 5}
+                    y={rect.y + 5}
+                    text={labelObj ? labelObj.name : rect.label}
                     fontSize={14}
-                    fill="blue"
+                    fill="red"
                     fontStyle="bold"
                   />
-                )}
-              </Group>
-            ))}
+                </Group>
+              );
+            })}
+
+            {/* Lassos */}
+            {lassos.map(({ points, label }, i) => {
+              const labelObj = labelOptions.find((l) => l.code === label);
+              return (
+                <Group
+                  key={`lasso-${i}`}
+                  onMouseEnter={(e) => {
+                    e.target.getStage().container().style.cursor = "pointer";
+                    const firstPoint = points[0];
+                    setHoveredShape({
+                      type: "Lasso",
+                      index: i,
+                      x: firstPoint.x,
+                      y: firstPoint.y,
+                    });
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.getStage().container().style.cursor = "crosshair";
+                    setHoveredShape(null);
+                  }}
+                >
+                  <Line
+                    points={points.flatMap((p) => [p.x, p.y])}
+                    stroke="blue"
+                    strokeWidth={2}
+                    closed
+                    fill="rgba(0,0,255,0.15)"
+                    tension={0.3}
+                  />
+                  {points.length > 0 && (
+                    <Text
+                      x={points[0].x + 5}
+                      y={points[0].y + 5}
+                      text={labelObj ? labelObj.name : label}
+                      fontSize={14}
+                      fill="blue"
+                      fontStyle="bold"
+                    />
+                  )}
+                </Group>
+              );
+            })}
 
             {/* Drawing current shapes */}
             {isDrawing && mode === "rect" && newRect && (
@@ -491,13 +522,47 @@ export default function AnnotatorCanvas() {
           </Layer>
         </Stage>
 
+        {/* --- Label Modal with Category Selection --- */}
         <LabelModal
           isOpen={!!labelingShape}
+          categories={categories}
           labelOptions={labelOptions}
-          selectedLabel={selectedLabel}
-          onSelectLabel={(label) => setSelectedLabel(label)}
-          onConfirm={confirmLabel}
-          onCancel={cancelLabel}
+          onConfirm={(labelCode) => {
+            // Save label and close modal
+            if (!labelingShape) return;
+            const { type, index, newShape } = labelingShape;
+            if (type === "rect") {
+              if (index === null) {
+                setRects((prev) => [
+                  ...prev,
+                  { ...newShape, label: labelCode },
+                ]);
+              } else {
+                setRects((prev) =>
+                  prev.map((r, i) =>
+                    i === index ? { ...r, label: labelCode } : r
+                  )
+                );
+              }
+            } else if (type === "lasso") {
+              if (index === null) {
+                setLassos((prev) => [
+                  ...prev,
+                  { points: newShape.points, label: labelCode },
+                ]);
+              } else {
+                setLassos((prev) =>
+                  prev.map((l, i) =>
+                    i === index
+                      ? { points: newShape.points, label: labelCode }
+                      : l
+                  )
+                );
+              }
+            }
+            setLabelingShape(null);
+          }}
+          onCancel={() => setLabelingShape(null)}
         />
       </div>
     </div>
