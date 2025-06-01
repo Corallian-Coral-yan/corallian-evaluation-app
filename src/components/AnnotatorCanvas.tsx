@@ -206,59 +206,77 @@ export default function AnnotatorCanvas() {
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
       {/* Toolbar */}
-      <nav className="flex flex-col items-center gap-4 py-6 px-2 bg-white shadow-md border-r border-gray-200 w-16">
-        {tools.map(({ tool, IconComponent, label }) => (
+      <nav className="flex flex-col items-center gap-2 py-6 px-2 bg-white shadow-md border-r border-gray-200 w-16">
+        {/* === Drawing Tools === */}
+        <div className="flex flex-col items-center gap-2">
           <button
-            key={tool}
-            onClick={() => setMode(tool as "rect" | "lasso")}
-            title={label}
+            onClick={() => setMode("rect")}
+            title="Rectangle"
             className={`w-12 h-12 flex items-center justify-center rounded-md transition-colors duration-150
-              ${mode === tool ? "bg-gray-200" : "hover:bg-gray-100"}`}
+        ${mode === "rect" ? "bg-gray-200" : "hover:bg-gray-100"}`}
           >
-            <IconComponent className="w-6 h-6 text-gray-700" />
+            <RectangleStackIcon className="w-6 h-6 text-gray-700" />
           </button>
-        ))}
 
-        <button
-          onClick={handleUndo}
-          title="Undo"
-          className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
-        >
-          <ArrowUturnLeftIcon className="w-6 h-6 text-gray-700" />
-        </button>
+          <button
+            onClick={() => setMode("lasso")}
+            title="Lasso"
+            className={`w-12 h-12 flex items-center justify-center rounded-md transition-colors duration-150
+        ${mode === "lasso" ? "bg-gray-200" : "hover:bg-gray-100"}`}
+          >
+            <PencilIcon className="w-6 h-6 text-gray-700" />
+          </button>
+        </div>
 
-        <button
-          onClick={handleDeleteAll}
-          title={`Clear ${mode === "rect" ? "Rectangles" : "Lassos"}`}
-          className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
-        >
-          <TrashIcon className="w-6 h-6 text-gray-700" />
-        </button>
+        <div className="w-8 border-t border-gray-300 my-2" />
 
-        {/* Zoom controls */}
-        <button
-          onClick={zoomIn}
-          title="Zoom In"
-          className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
-        >
-          <PlusIcon className="w-6 h-6 text-gray-700" />
-        </button>
+        {/* === Edit Actions === */}
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={handleUndo}
+            title="Undo"
+            className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
+          >
+            <ArrowUturnLeftIcon className="w-6 h-6 text-gray-700" />
+          </button>
 
-        <button
-          onClick={zoomOut}
-          title="Zoom Out"
-          className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
-        >
-          <MinusIcon className="w-6 h-6 text-gray-700" />
-        </button>
+          <button
+            onClick={handleDeleteAll}
+            title={`Clear ${mode === "rect" ? "Rectangles" : "Lassos"}`}
+            className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
+          >
+            <TrashIcon className="w-6 h-6 text-gray-700" />
+          </button>
+        </div>
 
-        <button
-          onClick={resetZoom}
-          title="Reset View"
-          className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
-        >
-          <ArrowPathRoundedSquareIcon className="w-6 h-6 text-gray-700" />
-        </button>
+        <div className="w-8 border-t border-gray-300 my-2" />
+
+        {/* === Zoom Controls === */}
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={zoomIn}
+            title="Zoom In"
+            className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
+          >
+            <PlusIcon className="w-6 h-6 text-gray-700" />
+          </button>
+
+          <button
+            onClick={zoomOut}
+            title="Zoom Out"
+            className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
+          >
+            <MinusIcon className="w-6 h-6 text-gray-700" />
+          </button>
+
+          <button
+            onClick={resetZoom}
+            title="Reset View"
+            className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
+          >
+            <ArrowPathRoundedSquareIcon className="w-6 h-6 text-gray-700" />
+          </button>
+        </div>
       </nav>
 
       {/* Canvas */}
