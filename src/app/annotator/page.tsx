@@ -20,14 +20,6 @@ export default function AnnotatorPage() {
 
   return (
     <main className="p-6">
-      {/* <h1 className="text-2xl font-bold mb-4">Hello, {session.user?.name}</h1> */}
-      <h1 className="text-2xl font-bold mb-4">Hello, Jana</h1>
-      <button
-        onClick={() => signOut()}
-        className="mb-6 bg-red-500 text-white px-4 py-2 rounded"
-      >
-        Sign out
-      </button>
       <AnnotatorCanvas />
     </main>
   );
