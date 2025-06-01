@@ -11,6 +11,7 @@ import {
   Group,
 } from "react-konva";
 import useImage from "use-image";
+import LabelModal from "@/components/modal/LabelModal";
 
 import {
   RectangleStackIcon,
@@ -33,10 +34,13 @@ type HoverInfo = {
   y: number;
 } | null;
 
+type RectWithLabel = RectShape & { label: string };
+type LassoWithLabel = { points: LassoShape; label: string };
+
 export default function AnnotatorCanvas() {
   const [mode, setMode] = useState<"rect" | "lasso">("rect");
-  const [rects, setRects] = useState<RectShape[]>([]);
-  const [lassos, setLassos] = useState<LassoShape[]>([]);
+  const [rects, setRects] = useState<RectWithLabel[]>([]);
+  const [lassos, setLassos] = useState<LassoWithLabel[]>([]);
   const [newRect, setNewRect] = useState<RectShape | null>(null);
   const [currentLasso, setCurrentLasso] = useState<LassoShape>([]);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -45,12 +49,20 @@ export default function AnnotatorCanvas() {
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
   const [lastPanPos, setLastPanPos] = useState<Point | null>(null);
   const [isPanning, setIsPanning] = useState(false);
+  const [labelingShape, setLabelingShape] = useState<{
+    type: "rect" | "lasso";
+    index: number | null; // if editing existing shape, else null
+    newShape: any; // shape data being labeled
+  } | null>(null);
+
+  const labelOptions = ["Coral", "Algae", "Rock", "Sand", "Other"];
+  const [selectedLabel, setSelectedLabel] = useState(labelOptions[0]);
 
   const MIN_SCALE = 0.5;
   const MAX_SCALE = 3;
   const SCALE_BY = 1.1;
 
-  const [bgImage, status] = useImage("/coral-1.jpg");
+  const [bgImage] = useImage("/coral-1.jpg");
   const stageRef = useRef<any>(null);
 
   const handleMouseDown = useCallback(
@@ -60,7 +72,6 @@ export default function AnnotatorCanvas() {
       if (!pos) return;
 
       if (e.evt.button === 2) {
-        // right-click for panning
         setIsPanning(true);
         setLastPanPos(pos);
         return;
@@ -115,13 +126,24 @@ export default function AnnotatorCanvas() {
       }
 
       if (mode === "rect" && newRect) {
-        setRects((prev) => [...prev, newRect]);
+        if (Math.abs(newRect.width) > 5 && Math.abs(newRect.height) > 5) {
+          setSelectedLabel(labelOptions[0]);
+          setLabelingShape({ type: "rect", index: null, newShape: newRect });
+        }
         setNewRect(null);
-      } else if (mode === "lasso") {
-        setLassos((prev) => [...prev, currentLasso]);
+      } 
+      
+      else if (mode === "lasso") {
+        if (currentLasso.length > 2) {
+          setSelectedLabel(labelOptions[0]);
+          setLabelingShape({
+            type: "lasso",
+            index: null,
+            newShape: { points: currentLasso },
+          });
+        }
         setCurrentLasso([]);
       }
-
       setIsDrawing(false);
     },
     [mode, newRect, currentLasso, isPanning]
@@ -177,31 +199,93 @@ export default function AnnotatorCanvas() {
     else setLassos([]);
   };
 
-  const shapeTooltip = hoveredShape && (
-    <>
-      <Rect
-        x={hoveredShape.x}
-        y={hoveredShape.y - 24}
-        width={120}
-        height={20}
-        fill="black"
-        opacity={0.7}
-        cornerRadius={4}
-      />
-      <Text
-        x={hoveredShape.x + 5}
-        y={hoveredShape.y - 22}
-        text={`${hoveredShape.type} #${hoveredShape.index}`}
-        fontSize={12}
-        fill="white"
-      />
-    </>
-  );
+  const confirmLabel = () => {
+    if (!labelingShape) return;
 
-  const tools = [
-    { tool: "rect", IconComponent: RectangleStackIcon, label: "Rectangle" },
-    { tool: "lasso", IconComponent: PencilIcon, label: "Lasso" },
-  ];
+    const { type, index, newShape } = labelingShape;
+    if (type === "rect") {
+      if (index === null) {
+        setRects((prev) => [...prev, { ...newShape, label: selectedLabel }]);
+      } else {
+        setRects((prev) =>
+          prev.map((r, i) => (i === index ? { ...r, label: selectedLabel } : r))
+        );
+      }
+    } else if (type === "lasso") {
+      if (index === null) {
+        setLassos((prev) => [
+          ...prev,
+          { points: newShape.points, label: selectedLabel },
+        ]);
+      } else {
+        setLassos((prev) =>
+          prev.map((l, i) =>
+            i === index ? { points: newShape.points, label: selectedLabel } : l
+          )
+        );
+      }
+    }
+    setLabelingShape(null);
+  };
+
+  const cancelLabel = () => {
+    setLabelingShape(null);
+  };
+
+  const shapeTooltip =
+    hoveredShape &&
+    (() => {
+      const label =
+        hoveredShape.type === "Rectangle"
+          ? rects[hoveredShape.index]?.label
+          : lassos[hoveredShape.index]?.label;
+
+      return (
+        <>
+          <Rect
+            x={hoveredShape.x}
+            y={hoveredShape.y - 40}
+            width={140}
+            height={30}
+            fill="black"
+            opacity={0.7}
+            cornerRadius={4}
+          />
+          <Text
+            x={hoveredShape.x + 5}
+            y={hoveredShape.y - 38}
+            text={`${hoveredShape.type} #${hoveredShape.index + 1}`}
+            fontSize={12}
+            fill="white"
+          />
+          <Text
+            x={hoveredShape.x + 5}
+            y={hoveredShape.y - 22}
+            text={`Label: ${label || "N/A"}`}
+            fontSize={12}
+            fill="white"
+          />
+        </>
+      );
+    })();
+
+  // Utility to convert lasso points to flat array for Polygon
+  const lassoPointsFlat = (points: Point[]) =>
+    points.reduce((acc: number[], p) => acc.concat([p.x, p.y]), []);
+
+  // Hover handlers for shapes
+  const handleRectMouseEnter = (index: number) => {
+    setHoveredShape({ type: "Rectangle", index, x: 10, y: 10 });
+  };
+  const handleRectMouseLeave = () => {
+    setHoveredShape(null);
+  };
+  const handleLassoMouseEnter = (index: number) => {
+    setHoveredShape({ type: "Lasso", index, x: 10, y: 10 });
+  };
+  const handleLassoMouseLeave = () => {
+    setHoveredShape(null);
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
@@ -260,7 +344,6 @@ export default function AnnotatorCanvas() {
           >
             <PlusIcon className="w-6 h-6 text-gray-700" />
           </button>
-
           <button
             onClick={zoomOut}
             title="Zoom Out"
@@ -268,10 +351,9 @@ export default function AnnotatorCanvas() {
           >
             <MinusIcon className="w-6 h-6 text-gray-700" />
           </button>
-
           <button
             onClick={resetZoom}
-            title="Reset View"
+            title="Reset Zoom"
             className="w-12 h-12 flex items-center justify-center rounded-md hover:bg-gray-100"
           >
             <ArrowPathRoundedSquareIcon className="w-6 h-6 text-gray-700" />
@@ -280,95 +362,144 @@ export default function AnnotatorCanvas() {
       </nav>
 
       {/* Canvas */}
-      <main className="flex-1 flex justify-center items-center p-6">
-        <div className="rounded-xl overflow-hidden shadow-lg border border-gray-200 bg-white">
-          {status === "loaded" && (
-            <Stage
-              ref={stageRef}
-              width={800}
-              height={600}
-              scaleX={stageScale}
-              scaleY={stageScale}
-              x={stagePosition.x}
-              y={stagePosition.y}
-              onContextMenu={(e) => e.evt.preventDefault()}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onWheel={handleWheel}
-            >
-              <Layer>
-                <KonvaImage image={bgImage} width={800} height={600} />
+      <div className="flex-1 flex justify-center items-center bg-gray-100 p-4">
+        <Stage
+          ref={stageRef}
+          width={900}
+          height={600}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
+          scaleX={stageScale}
+          scaleY={stageScale}
+          x={stagePosition.x}
+          y={stagePosition.y}
+          style={{ cursor: isPanning ? "grabbing" : "crosshair" }}
+          onContextMenu={(e) => e.evt.preventDefault()}
+        >
+          <Layer>
+            {/* Background image */}
+            {bgImage && <KonvaImage image={bgImage} width={900} height={600} />}
 
-                {rects.map((rect, i) => (
-                  <Group
-                    key={`rect-${i}`}
-                    onMouseEnter={() =>
-                      setHoveredShape({
-                        type: "Rectangle",
-                        index: i,
-                        x: rect.x,
-                        y: rect.y,
-                      })
-                    }
-                    onMouseLeave={() => setHoveredShape(null)}
-                  >
-                    <Rect
-                      {...rect}
-                      stroke="#3B82F6"
-                      strokeWidth={2}
-                      fill="rgba(59, 130, 246, 0.2)"
-                    />
-                  </Group>
-                ))}
+            {/* Rectangles */}
+            {rects.map((rect, i) => (
+              <Group
+                key={`rect-${i}`}
+                onMouseEnter={(e) => {
+                  e.target.getStage().container().style.cursor = "pointer";
+                  setHoveredShape({
+                    type: "Rectangle",
+                    index: i,
+                    x: e.target.x(),
+                    y: e.target.y(),
+                  });
+                }}
+                onMouseLeave={(e) => {
+                  e.target.getStage().container().style.cursor = "crosshair";
+                  setHoveredShape(null);
+                }}
+              >
+                <Rect
+                  x={rect.x}
+                  y={rect.y}
+                  width={rect.width}
+                  height={rect.height}
+                  stroke="red"
+                  strokeWidth={2}
+                  dash={[6, 4]}
+                  fill="rgba(255,0,0,0.15)"
+                />
+                <Text
+                  x={rect.x + 5}
+                  y={rect.y + 5}
+                  text={rect.label}
+                  fontSize={14}
+                  fill="red"
+                  fontStyle="bold"
+                />
+              </Group>
+            ))}
 
-                {newRect && (
-                  <Rect
-                    {...newRect}
-                    stroke="#EF4444"
-                    strokeWidth={2}
-                    dash={[4, 4]}
-                    fill="rgba(239, 68, 68, 0.1)"
+            {/* Lassos */}
+            {lassos.map(({ points, label }, i) => (
+              <Group
+                key={`lasso-${i}`}
+                onMouseEnter={(e) => {
+                  e.target.getStage().container().style.cursor = "pointer";
+                  const firstPoint = points[0];
+                  setHoveredShape({
+                    type: "Lasso",
+                    index: i,
+                    x: firstPoint.x,
+                    y: firstPoint.y,
+                  });
+                }}
+                onMouseLeave={(e) => {
+                  e.target.getStage().container().style.cursor = "crosshair";
+                  setHoveredShape(null);
+                }}
+              >
+                <Line
+                  points={points.flatMap((p) => [p.x, p.y])}
+                  stroke="blue"
+                  strokeWidth={2}
+                  closed
+                  fill="rgba(0,0,255,0.15)"
+                  tension={0.3}
+                />
+                {points.length > 0 && (
+                  <Text
+                    x={points[0].x + 5}
+                    y={points[0].y + 5}
+                    text={label}
+                    fontSize={14}
+                    fill="blue"
+                    fontStyle="bold"
                   />
                 )}
+              </Group>
+            ))}
 
-                {lassos.map((points, i) => (
-                  <Group
-                    key={`lasso-${i}`}
-                    onMouseEnter={() =>
-                      setHoveredShape({
-                        type: "Lasso",
-                        index: i,
-                        x: points[0].x,
-                        y: points[0].y,
-                      })
-                    }
-                    onMouseLeave={() => setHoveredShape(null)}
-                  >
-                    <Line
-                      points={points.flatMap((p) => [p.x, p.y])}
-                      stroke="#10B981"
-                      strokeWidth={2}
-                      closed
-                      fill="rgba(16, 185, 129, 0.2)"
-                    />
-                  </Group>
-                ))}
+            {/* Drawing current shapes */}
+            {isDrawing && mode === "rect" && newRect && (
+              <Rect
+                x={newRect.x}
+                y={newRect.y}
+                width={newRect.width}
+                height={newRect.height}
+                stroke="green"
+                strokeWidth={2}
+                dash={[4, 2]}
+                fill="rgba(0,255,0,0.1)"
+              />
+            )}
 
-                {currentLasso.length > 1 && (
-                  <Line
-                    points={currentLasso.flatMap((p) => [p.x, p.y])}
-                    stroke="#EF4444"
-                    strokeWidth={2}
-                  />
-                )}
+            {isDrawing && mode === "lasso" && currentLasso.length > 0 && (
+              <Line
+                points={currentLasso.flatMap((p) => [p.x, p.y])}
+                stroke="green"
+                strokeWidth={2}
+                tension={0.3}
+                lineCap="round"
+                lineJoin="round"
+              />
+            )}
 
-                {shapeTooltip}
-              </Layer>
-            </Stage>
-          )}
-        </div>
-      </main>
+            {/* Tooltip */}
+            {hoveredShape && shapeTooltip}
+          </Layer>
+        </Stage>
+
+        <LabelModal
+          isOpen={!!labelingShape}
+          labelOptions={labelOptions}
+          selectedLabel={selectedLabel}
+          onSelectLabel={(label) => setSelectedLabel(label)}
+          onConfirm={confirmLabel}
+          onCancel={cancelLabel}
+        />
+      </div>
     </div>
   );
 }
