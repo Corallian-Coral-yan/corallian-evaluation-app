@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+// import {
+//   Select,
+//   SelectTrigger,
+//   SelectValue,
+//   SelectContent,
+//   SelectItem,
+// } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,7 +49,7 @@ const onboardingSteps = [
 
 export default function VerifyPredictionPage() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [newLabel, setNewLabel] = useState<CoralLabel | "">("");
+  // const [newLabel, setNewLabel] = useState<CoralLabel | "">("");
   const [submitted, setSubmitted] = useState(false);
 
   const [onboardingOpen, setOnboardingOpen] = useState(true);
@@ -74,7 +74,8 @@ export default function VerifyPredictionPage() {
     const result: VerificationResult = {
       correct: isCorrect,
       originalLabel: prediction.label,
-      newLabel: isCorrect ? prediction.label : newLabel || "Unknown",
+      // newLabel: isCorrect ? prediction.label : newLabel || "Unknown",
+      newLabel: isCorrect ? prediction.label : "Unknown",
       imageUrl: prediction.imageUrl,
     };
 
@@ -175,7 +176,7 @@ export default function VerifyPredictionPage() {
                     ❌ Not Correct
                   </Button>
                 </div>
-                {isCorrect === false && (
+                {/* {isCorrect === false && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
                       Select the correct label:
@@ -195,16 +196,14 @@ export default function VerifyPredictionPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-                {isCorrect !== null && (isCorrect || newLabel) && (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={submitted}
-                    className="mt-4"
-                  >
-                    {submitted ? "Submitted ✅" : "Submit Verification"}
-                  </Button>
-                )}
+                )} */}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isCorrect === null || submitted}
+                  className="mt-4"
+                >
+                  {submitted ? "Submitted ✅" : "Submit Verification"}
+                </Button>
               </div>
             </CardContent>
           </Card>
