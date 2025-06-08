@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 
-// --- Define Types ---
 type CoralLabel = "AA" | "HC" | "SC" | "SP" | "DC" | "Unknown";
 
 interface PredictionData {
@@ -39,7 +38,6 @@ export default function VerifyPredictionPage() {
   const prediction: PredictionData = {
     imageUrl: "/coral-1.jpg",
     label: "AA",
-    confidence: 0.87,
   };
 
   const handleSubmit = () => {

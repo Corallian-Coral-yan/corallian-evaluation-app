@@ -2,11 +2,10 @@ import { withAuth } from "next-auth/middleware";
 
 export default withAuth({
   pages: {
-    signIn: "/login",
+    signIn: "/login", // redirect here if not authenticated
   },
 });
 
-// Protect all routes under /annotator
 export const config = {
-  // matcher: ["/annotator"],
+  matcher: ["/annotator/:path*", "/dashboard/:path*"],
 };
