@@ -1,36 +1,29 @@
-// lib/mongodb.ts
-import { MongoClient, Db } from "mongodb";
+import mongoose from "mongoose";
 
-if (!process.env.MONGODB_URI) {
-  throw new Error("Please add your Mongo URI to .env.local");
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017";
+const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || "corallian";
+
+if (!MONGODB_URI) {
+  throw new Error("Please define MONGODB_URI in .env.local");
 }
 
-const uri = process.env.MONGODB_URI;
-const options = {};
-
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
+let isConnected = false;
 
 declare global {
-  // eslint-disable-next-line no-var
-  var _mongoClientPromise: Promise<MongoClient>;
+  var _mongooseConnection: Promise<typeof mongoose> | undefined;
 }
 
-if (process.env.NODE_ENV === "development") {
-  // In development mode, use a global variable so the client
-  // is reused across module reloads caused by HMR (Hot Module Replacement).
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(uri!, options);
-    global._mongoClientPromise = client.connect();
+const cached = global._mongooseConnection;
+
+export async function connectToDatabase() {
+  if (isConnected) return;
+
+  if (!cached) {
+    global._mongooseConnection = mongoose.connect(MONGODB_URI, {
+      dbName: MONGODB_DB_NAME,
+    });
   }
-  clientPromise = global._mongoClientPromise;
-} else {
-  // In production, it's best to not use a global variable.
-  client = new MongoClient(uri!, options);
-  clientPromise = client.connect();
-}
 
-export async function getDB(): Promise<Db> {
-  const client = await clientPromise;
-  return client.db(process.env.MONGODB_DB || "coral-evaluator");
+  await global._mongooseConnection;
+  isConnected = true;
 }
