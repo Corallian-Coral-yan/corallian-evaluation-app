@@ -2,13 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-// import {
-//   Select,
-//   SelectTrigger,
-//   SelectValue,
-//   SelectContent,
-//   SelectItem,
-// } from "@/components/ui/select";
+import { useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,19 +10,22 @@ import { motion, AnimatePresence } from "framer-motion";
 type CoralLabel = "AA" | "HC" | "SC" | "SP" | "DC" | "Unknown";
 
 interface PredictionData {
-  imageUrl: string;
-  label: CoralLabel;
-  confidence?: number;
+  imageId: string;
+  filename: string;
+  actualLabel: CoralLabel;
+  predictedLabel: CoralLabel;
+  tau?: string;
+  site?: string;
+  dateTaken?: string;
+  imageUrl: string; // now expected from API
 }
 
 interface VerificationResult {
   correct: boolean;
   originalLabel: CoralLabel;
   newLabel: CoralLabel;
-  imageUrl: string;
+  imageId: string;
 }
-
-const LABELS: CoralLabel[] = ["AA", "HC", "SC", "SP", "DC", "Unknown"];
 
 const onboardingSteps = [
   {
@@ -48,14 +45,19 @@ const onboardingSteps = [
 ];
 
 export default function VerifyPredictionPage() {
+  const params = useParams();
+  const imageId = Array.isArray(params?.imageId)
+    ? params.imageId[0]
+    : params?.imageId;
+
+  const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  // const [newLabel, setNewLabel] = useState<CoralLabel | "">("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [onboardingOpen, setOnboardingOpen] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
 
-  // On mount, check localStorage for onboarding flag
   useEffect(() => {
     const completed = localStorage.getItem("onboardingCompleted");
     if (completed === "true") {
@@ -63,33 +65,37 @@ export default function VerifyPredictionPage() {
     }
   }, []);
 
-  const prediction: PredictionData = {
-    imageUrl: "/coral-1.jpg",
-    label: "AA",
-  };
+  useEffect(() => {
+    if (!imageId) return;
+    setLoading(true);
+
+    fetch(`/api/image/${imageId}`)
+      .then((res) => res.json())
+      .then((data) => setPrediction(data))
+      .catch((err) => console.error("Error fetching image metadata:", err))
+      .finally(() => setLoading(false));
+  }, [imageId]);
 
   const handleSubmit = () => {
-    if (isCorrect === null) return;
+    if (isCorrect === null || !prediction) return;
 
     const result: VerificationResult = {
       correct: isCorrect,
-      originalLabel: prediction.label,
-      // newLabel: isCorrect ? prediction.label : newLabel || "Unknown",
-      newLabel: isCorrect ? prediction.label : "Unknown",
-      imageUrl: prediction.imageUrl,
+      originalLabel: prediction.predictedLabel,
+      newLabel: isCorrect ? prediction.predictedLabel : "Unknown",
+      imageId: prediction.imageId,
     };
 
-    console.log("Submitted verification:", result);
+    console.log("✅ Submitted verification:", result);
     setSubmitted(true);
 
-    // TODO: send `result` to backend
+    // TODO: send result to backend API via POST
   };
 
   const nextStep = () => {
     if (stepIndex < onboardingSteps.length - 1) {
       setStepIndex((i) => i + 1);
     } else {
-      // Mark onboarding complete and close
       localStorage.setItem("onboardingCompleted", "true");
       setOnboardingOpen(false);
     }
@@ -103,7 +109,7 @@ export default function VerifyPredictionPage() {
 
   return (
     <>
-      {/* Onboarding Dialog */}
+      {/* Onboarding */}
       <Dialog.Root open={onboardingOpen} onOpenChange={setOnboardingOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/30" />
@@ -143,70 +149,63 @@ export default function VerifyPredictionPage() {
         </Dialog.Portal>
       </Dialog.Root>
 
-      {/* Main Verification UI */}
+      {/* Main UI */}
       {!onboardingOpen && (
         <div className="max-w-4xl mx-auto p-6 space-y-6">
           <h1 className="text-3xl font-semibold">Verify Coral Prediction</h1>
 
-          <Card>
-            <CardContent className="flex flex-col gap-6 items-center">
-              <img
-                src={prediction.imageUrl}
-                alt="Predicted coral"
-                className="w-full max-w-3xl rounded-lg shadow"
-              />
-              <div className="w-full max-w-3xl space-y-4 text-center">
-                <div>
-                  <p className="text-xl font-medium">
-                    Predicted Label:{" "}
-                    <span className="font-bold">{prediction.label}</span>
-                  </p>
-                </div>
-                <div className="flex justify-center gap-4">
-                  <Button
-                    variant={isCorrect === true ? "default" : "outline"}
-                    onClick={() => setIsCorrect(true)}
-                  >
-                    ✅ Correct
-                  </Button>
-                  <Button
-                    variant={isCorrect === false ? "destructive" : "outline"}
-                    onClick={() => setIsCorrect(false)}
-                  >
-                    ❌ Not Correct
-                  </Button>
-                </div>
-                {/* {isCorrect === false && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Select the correct label:
-                    </label>
-                    <Select
-                      onValueChange={(val) => setNewLabel(val as CoralLabel)}
+          {loading || !prediction ? (
+            <p className="text-center text-lg">Loading...</p>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col gap-6 items-center">
+                <img
+                  src={prediction.imageUrl}
+                  alt={`Coral image ${prediction.imageId}`}
+                  className="w-full max-w-3xl rounded-lg shadow"
+                  loading="lazy"
+                  style={{ aspectRatio: "16/9", objectFit: "contain" }}
+                />
+                <div className="w-full max-w-3xl space-y-2 text-center">
+                  <p className="text-xl">
+                    <strong>Predicted Label:</strong>{" "}
+                    <span
+                      className={
+                        prediction.predictedLabel === prediction.actualLabel
+                          ? "text-green-700 font-semibold"
+                          : "text-red-600 font-semibold"
+                      }
                     >
-                      <SelectTrigger className="w-60 mx-auto">
-                        <SelectValue placeholder="Choose correct label" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LABELS.map((label) => (
-                          <SelectItem key={label} value={label}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {prediction.actualLabel === "True" ? "AA" : "Not AA"}
+                    </span>
+                  </p>
+
+                  <div className="flex justify-center gap-4 mt-4">
+                    <Button
+                      variant={isCorrect === true ? "default" : "outline"}
+                      onClick={() => setIsCorrect(true)}
+                    >
+                      ✅ Correct
+                    </Button>
+                    <Button
+                      variant={isCorrect === false ? "destructive" : "outline"}
+                      onClick={() => setIsCorrect(false)}
+                    >
+                      ❌ Not Correct
+                    </Button>
                   </div>
-                )} */}
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isCorrect === null || submitted}
-                  className="mt-4"
-                >
-                  {submitted ? "Submitted ✅" : "Submit Verification"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isCorrect === null || submitted}
+                    className="mt-4"
+                  >
+                    {submitted ? "Submitted ✅" : "Submit Verification"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </>
