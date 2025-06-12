@@ -76,21 +76,32 @@ export default function VerifyPredictionPage() {
       .finally(() => setLoading(false));
   }, [imageId]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isCorrect === null || !prediction) return;
 
-    const result: VerificationResult = {
+    const payload = {
+      imageId: prediction.imageId,
       correct: isCorrect,
       originalLabel: prediction.predictedLabel,
       newLabel: isCorrect ? prediction.predictedLabel : "Unknown",
-      imageId: prediction.imageId,
+      // user: session?.user?.email,
     };
 
-    console.log("✅ Submitted verification:", result);
-    setSubmitted(true);
+    try {
+      const res = await fetch("/api/evaluations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    // TODO: send result to backend API via POST
+      if (!res.ok) throw new Error("Failed to save");
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Submission error:", err);
+      alert("Could not submit verification. Please try again.");
+    }
   };
+  
 
   const nextStep = () => {
     if (stepIndex < onboardingSteps.length - 1) {
