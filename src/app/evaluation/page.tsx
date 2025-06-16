@@ -1,3 +1,4 @@
+// app/evaluation/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,26 +21,34 @@ export default function EvaluationPage() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // Load one random image
+  // Fetch one random image + metadata
   const loadRandom = async () => {
     setLoading(true);
     setSubmitted(false);
     setIsCorrect(null);
+
+    console.log("➡️ Fetching /api/evaluations/random…");
     try {
       const res = await fetch("/api/evaluations/random");
+      console.log("⏳ response status:", res.status);
       const json = await res.json();
-      setData(json);
+      console.log("📥 payload:", json);
+
+      if (res.ok && !json.error) {
+        setData(json);
+      } else {
+        console.error("⚠️ Random API error:", json);
+        setData(null);
+      }
     } catch (err) {
-      console.error("Failed to load random image:", err);
+      console.error("❌ Network or code error:", err);
+      setData(null);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadRandom();
-  }, []);
-
+  // Submit the user’s evaluation
   const handleSubmit = async () => {
     if (!data || isCorrect === null) return;
     const payload = {
@@ -48,21 +57,38 @@ export default function EvaluationPage() {
       originalLabel: data.predictedLabel,
       newLabel: isCorrect ? data.predictedLabel : "Unknown",
     };
+
     try {
-      await fetch("/api/evaluations", {
+      const res = await fetch("/api/evaluations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error("save failed");
+      console.log("✅ Saved evaluation:", payload);
       setSubmitted(true);
     } catch (err) {
-      console.error("Error saving evaluation:", err);
-      alert("Could not submit; please try again.");
+      console.error("❌ Submission error:", err);
+      alert("Could not save evaluation; please try again.");
     }
   };
 
-  if (loading) return <p className="text-center p-6">Loading…</p>;
-  if (!data) return <p className="text-center p-6">No image available.</p>;
+  useEffect(() => {
+    loadRandom();
+  }, []);
+
+  if (loading) {
+    return <p className="text-center p-6">Loading…</p>;
+  }
+
+  if (!data) {
+    return (
+      <div className="text-center p-6">
+        <p>No image available.</p>
+        <Button onClick={loadRandom}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -73,16 +99,12 @@ export default function EvaluationPage() {
             src={data.imageUrl}
             alt={data.imageId}
             className="max-w-full rounded-lg shadow"
+            loading="lazy"
+            style={{ aspectRatio: "16/9", objectFit: "contain" }}
           />
           <div className="w-full max-w-3xl space-y-2 text-center">
             <p className="text-xl">
-              <strong>Actual:</strong>{" "}
-              <span className="text-green-700 font-semibold">
-                {data.actualLabel}
-              </span>
-            </p>
-            <p className="text-xl">
-              <strong>Predicted:</strong>{" "}
+              <strong>Predicted Label:</strong>{" "}
               <span
                 className={
                   data.predictedLabel === data.actualLabel
@@ -93,6 +115,7 @@ export default function EvaluationPage() {
                 {data.predictedLabel}
               </span>
             </p>
+
             <div className="flex justify-center gap-4 mt-4">
               <Button
                 variant={isCorrect === true ? "default" : "outline"}
@@ -107,6 +130,7 @@ export default function EvaluationPage() {
                 ❌ Not Correct
               </Button>
             </div>
+
             <div className="flex justify-center gap-4 mt-4">
               <Button
                 onClick={handleSubmit}

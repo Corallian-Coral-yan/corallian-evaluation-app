@@ -17,14 +17,7 @@ interface PredictionData {
   tau?: string;
   site?: string;
   dateTaken?: string;
-  imageUrl: string; // now expected from API
-}
-
-interface VerificationResult {
-  correct: boolean;
-  originalLabel: CoralLabel;
-  newLabel: CoralLabel;
-  imageId: string;
+  imageUrl: string;
 }
 
 const onboardingSteps = [
@@ -84,7 +77,7 @@ export default function VerifyPredictionPage() {
       correct: isCorrect,
       originalLabel: prediction.predictedLabel,
       newLabel: isCorrect ? prediction.predictedLabel : "Unknown",
-      // user: session?.user?.email,
+      user: session?.user?.email,
     };
 
     try {
