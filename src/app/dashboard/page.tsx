@@ -1,40 +1,63 @@
 "use client";
 
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { signOut, useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { Card, CardContent } from "@/components/ui/card";
+
+interface Summary {
+  totalEvals: number;
+  userAccuracy: number; // 0–1
+  perLabelAccuracy: Record<string, number>; // e.g. { AA: 0.87, HC: 0.72, … }
+}
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const [summary, setSummary] = useState<Summary | null>(null);
 
-  if (!session) {
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch(
+      `/api/evaluations/summary?user=${encodeURIComponent(
+        session.user?.email || ""
+      )}`
+    )
+      .then((res) => res.json())
+      .then(setSummary)
+      .catch(console.error);
+  }, [status, session?.user?.email]);
+
+  if (status !== "authenticated" || !summary) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading session...</p>
-      </div>
+      <p className="min-h-screen flex items-center justify-center">Loading…</p>
     );
   }
 
+  const { totalEvals, userAccuracy, perLabelAccuracy } = summary;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Main Content */}
-      <main className="p-8 max-w-4xl mx-auto">
-        <div className= "flex">
-          <h2 className="text-xl mb-4 mr-1">
-            Welcome,
-          </h2>
-          <h2 className="text-xl font-bold mb-4">
-            {session.user?.name}!
-          </h2>
-        </div>
-        <p className="text-gray-700 mb-6">
-          This is your coral evaluation dashboard where you can view and manage
-          evaluations and annotations.
-        </p>
+      <main className="p-8 max-w-4xl mx-auto space-y-8">
+        <h2 className="text-2xl font-bold">Welcome, {session.user?.name}</h2>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-semibold mb-2">Recent Evaluations</h3>
-          <p className="text-gray-600">You don't have any annotations yet.</p>
+        {/* Snapshot Cards */}
+        <div className="grid grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="text-center">
+              <p className="text-lg">My Evaluations</p>
+              <p className="text-3xl font-semibold">{totalEvals}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="text-center">
+              <p className="text-lg">Model's Accuracy</p>
+              <p className="text-3xl font-semibold">
+                {(userAccuracy * 100).toFixed(1)}%
+              </p>
+            </CardContent>
+          </Card>
         </div>
+
       </main>
     </div>
   );
