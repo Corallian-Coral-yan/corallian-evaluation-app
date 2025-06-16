@@ -112,7 +112,7 @@ export default function EvaluationPage() {
                     : "text-red-600 font-semibold"
                 }
               >
-                {data.predictedLabel}
+                {data.predictedLabel === "True" ? "Non-coral" : "Coral"}
               </span>
             </p>
 
