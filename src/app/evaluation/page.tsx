@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
 
 type CoralLabel = "AA" | "HC" | "SC" | "SP" | "DC" | "Unknown";
 
@@ -16,6 +17,7 @@ interface EvaluationData {
 }
 
 export default function EvaluationPage() {
+  const { data: session } = useSession();
   const [data, setData] = useState<EvaluationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -56,6 +58,7 @@ export default function EvaluationPage() {
       correct: isCorrect,
       originalLabel: data.predictedLabel,
       newLabel: isCorrect ? data.predictedLabel : "Unknown",
+      user: session?.user?.email || "anonymous",
     };
 
     try {
