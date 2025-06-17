@@ -66,7 +66,7 @@ export default function EvaluationPage() {
       imageId: data.imageId,
       correct: isCorrect,
       originalLabel: data.predictedLabel,
-      newLabel: isCorrect ? data.predictedLabel : "Unknown",
+      newLabel: isCorrect ? "Right" : "Wrong",
       additionalLabels,
       user: session?.user?.email || "anonymous",
     };

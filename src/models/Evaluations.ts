@@ -5,6 +5,7 @@ const EvaluationsSchema = new mongoose.Schema({
   correct: { type: Boolean, required: true },
   originalLabel: { type: String, required: true },
   newLabel: { type: String, required: true },
+  additionalLabels: { type: [String], default: [] },
   user: { type: String }, // optional
   submittedAt: { type: Date, default: Date.now },
 });

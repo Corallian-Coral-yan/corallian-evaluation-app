@@ -1,4 +1,3 @@
-// app/api/evaluations/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { EvaluationsModel } from "@/models/Evaluations";
@@ -6,8 +5,14 @@ import { EvaluationsModel } from "@/models/Evaluations";
 export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
-    const { imageId, correct, originalLabel, newLabel, user } =
-      await req.json();
+    const {
+      imageId,
+      correct,
+      originalLabel,
+      newLabel,
+      additionalLabels = [],
+      user,
+    } = await req.json();
 
     if (!imageId || correct === undefined || !originalLabel || !newLabel) {
       return NextResponse.json(
@@ -21,6 +26,7 @@ export async function POST(req: NextRequest) {
       correct,
       originalLabel,
       newLabel,
+      additionalLabels,
       user,
     });
     return NextResponse.json({ success: true, id: doc._id });
