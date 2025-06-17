@@ -21,7 +21,7 @@ export default function LoginPage() {
               onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
               className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
             >
-              Sign in with Google
+              Sign in with DLSU Google Account
             </button>
           </Dialog.Content>
         </Dialog.Portal>
