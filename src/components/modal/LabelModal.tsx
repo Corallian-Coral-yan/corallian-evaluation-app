@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from "react";
+// components/modal/LabelModal.tsx
+"use client";
 
-interface LabelOption {
+import React, { useState, useEffect } from "react";
+import Select, { MultiValue } from "react-select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+export interface LabelOption {
   code: string;
   name: string;
   category?: string;
@@ -9,128 +15,60 @@ interface LabelOption {
 
 interface LabelModalProps {
   isOpen: boolean;
-  categories: string[];
   labelOptions: LabelOption[];
-  onConfirm: (labelCode: string) => void;
+  onConfirm: (labelCodes: string[]) => void;
   onCancel: () => void;
 }
 
 export default function LabelModal({
   isOpen,
-  categories,
   labelOptions,
   onConfirm,
   onCancel,
 }: LabelModalProps) {
-  const [step, setStep] = useState<"category" | "label">("category");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [selectedLabel, setSelectedLabel] = useState<string>("");
+  const [selected, setSelected] = useState<
+    MultiValue<{ value: string; label: string }>
+  >([]);
 
   useEffect(() => {
-    if (!isOpen) {
-      // Reset modal state when closed
-      setStep("category");
-      setSelectedCategory("");
-      setSelectedLabel("");
-    }
+    if (!isOpen) setSelected([]);
   }, [isOpen]);
-
-  // Filter labels by selectedCategory
-  const filteredLabels = labelOptions.filter(
-    (label) => label.category === selectedCategory
-  );
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="bg-white p-6 rounded shadow-lg w-80">
-        {step === "category" && (
-          <>
-            <h2 className="text-lg font-semibold mb-4">Select Category</h2>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 mb-4"
-            >
-              <option value="" disabled>
-                -- Select category --
-              </option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={onCancel}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (selectedCategory) setStep("label");
-                }}
-                disabled={!selectedCategory}
-                className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${
-                  !selectedCategory ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-              >
-                Next
-              </button>
-            </div>
-          </>
-        )}
+  // Build options with the new format
+  const options = labelOptions.map((l) => ({
+    value: l.code,
+    label: `${l.category || "Uncategorized"} : ${l.name} (${l.code})`,
+  }));
 
-        {step === "label" && (
-          <>
-            <h2 className="text-lg font-semibold mb-4">Select Label</h2>
-            <select
-              value={selectedLabel}
-              onChange={(e) => setSelectedLabel(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 mb-4"
+  return (
+    <section className="w-full max-w-3xl mx-auto mt-4">
+      <Card>
+        <CardContent className="space-y-4">
+          <h3 className="text-lg font-semibold">Select One or More Labels</h3>
+          <Select
+            isMulti
+            options={options}
+            value={selected}
+            onChange={(vals) => setSelected(vals)}
+            placeholder="Type to search…"
+            className="basic-multi-select"
+            classNamePrefix="select"
+          />
+          <div className="flex justify-between mt-4">
+            <Button variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => onConfirm(selected.map((v) => v.value))}
+              disabled={selected.length === 0}
             >
-              <option value="" disabled>
-                -- Select label --
-              </option>
-              {filteredLabels.map((label) => (
-                <option key={label.code} value={label.code}>
-                  {label.name}
-                </option>
-              ))}
-            </select>
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep("category")}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-              >
-                Back
-              </button>
-              <div className="flex gap-2">
-                <button
-                  onClick={onCancel}
-                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (selectedLabel) onConfirm(selectedLabel);
-                  }}
-                  disabled={!selectedLabel}
-                  className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${
-                    !selectedLabel ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+              Confirm
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }

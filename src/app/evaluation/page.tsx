@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
+import Select, { MultiValue } from "react-select";
+import { labelOptions } from "@/components/modal/labelManager";
 
 type CoralLabel = "AA" | "HC" | "SC" | "SP" | "DC" | "Unknown";
 
@@ -23,41 +25,49 @@ export default function EvaluationPage() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // Fetch one random image + metadata
+  // For inline multi-select
+  const [selectedOptions, setSelectedOptions] = useState<
+    MultiValue<{ value: string; label: string }>
+  >([]);
+
+  // load random image
   const loadRandom = async () => {
     setLoading(true);
     setSubmitted(false);
     setIsCorrect(null);
-
-    console.log("➡️ Fetching /api/evaluations/random…");
+    setSelectedOptions([]);
     try {
       const res = await fetch("/api/evaluations/random");
-      console.log("⏳ response status:", res.status);
       const json = await res.json();
-      console.log("📥 payload:", json);
-
-      if (res.ok && !json.error) {
-        setData(json);
-      } else {
-        console.error("⚠️ Random API error:", json);
-        setData(null);
-      }
-    } catch (err) {
-      console.error("❌ Network or code error:", err);
+      setData(res.ok && !json.error ? json : null);
+    } catch {
       setData(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Submit the user’s evaluation
+  useEffect(() => {
+    loadRandom();
+  }, []);
+
+  // handle Correct / Not Correct
+  const handleMark = (correct: boolean) => {
+    setIsCorrect(correct);
+  };
+
+  // Submit everything
   const handleSubmit = async () => {
     if (!data || isCorrect === null) return;
+
+    const additionalLabels = selectedOptions.map((opt) => opt.value);
+
     const payload = {
       imageId: data.imageId,
       correct: isCorrect,
       originalLabel: data.predictedLabel,
       newLabel: isCorrect ? data.predictedLabel : "Unknown",
+      additionalLabels,
       user: session?.user?.email || "anonymous",
     };
 
@@ -67,46 +77,44 @@ export default function EvaluationPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("save failed");
-      console.log("✅ Saved evaluation:", payload);
+      if (!res.ok) throw new Error();
       setSubmitted(true);
-    } catch (err) {
-      console.error("❌ Submission error:", err);
-      alert("Could not save evaluation; please try again.");
+    } catch {
+      alert("Could not save evaluation. Please try again.");
     }
   };
 
-  useEffect(() => {
-    loadRandom();
-  }, []);
-
-  if (loading) {
-    return <p className="text-center p-6">Loading…</p>;
-  }
-
-  if (!data) {
+  if (loading) return <p className="text-center p-6">Loading…</p>;
+  if (!data)
     return (
       <div className="text-center p-6">
         <p>No image available.</p>
         <Button onClick={loadRandom}>Try Again</Button>
       </div>
     );
-  }
+
+  // build react-select options once
+  const selectOptions = labelOptions.map((l) => ({
+    value: l.code,
+    label: `${l.category} : ${l.name} (${l.code})`,
+  }));
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-3xl font-semibold">Evaluate Coral Prediction</h1>
+
       <Card>
         <CardContent className="flex flex-col items-center gap-6">
           <img
             src={data.imageUrl}
             alt={data.imageId}
-            className="max-w-full rounded-lg shadow"
+            className="w-full rounded-lg shadow"
             loading="lazy"
             style={{ aspectRatio: "16/9", objectFit: "contain" }}
           />
-          <div className="w-full max-w-3xl space-y-2 text-center">
-            <p className="text-xl">
+
+          <div className="w-full max-w-3xl space-y-2">
+            <p className="text-xl text-center">
               <strong>Predicted Label:</strong>{" "}
               <span
                 className={
@@ -115,26 +123,58 @@ export default function EvaluationPage() {
                     : "text-red-600 font-semibold"
                 }
               >
-                {data.predictedLabel === "True" ? "Non-coral" : "Coral"}
+                {data.predictedLabel.toLowerCase() === "true"
+                  ? "Not Coral"
+                  : "Coral"}
               </span>
             </p>
 
-            <div className="flex justify-center gap-4 mt-4">
+            {/* ✅ Correct / ❌ Not Correct */}
+            <div className="flex justify-center gap-4 space-y-4">
               <Button
                 variant={isCorrect === true ? "default" : "outline"}
-                onClick={() => setIsCorrect(true)}
+                onClick={() => handleMark(true)}
+                disabled={submitted}
               >
                 ✅ Correct
               </Button>
               <Button
                 variant={isCorrect === false ? "destructive" : "outline"}
-                onClick={() => setIsCorrect(false)}
+                onClick={() => handleMark(false)}
+                disabled={submitted}
               >
                 ❌ Not Correct
               </Button>
             </div>
 
-            <div className="flex justify-center gap-4 mt-4">
+            {/* Inline multi-select, always visible but disabled until mark */}
+            <div className="mt-4">
+              <p className="text-sm text-center text-gray-600 mb-2">
+                If you think there are other TAUs/labels in this image, please
+                add them here:
+              </p>
+              <Select
+                isMulti
+                options={selectOptions}
+                value={selectedOptions}
+                onChange={(vals) => setSelectedOptions(vals)}
+                placeholder="Select one or more labels…"
+                isDisabled={isCorrect === null || submitted}
+                className="basic-multi-select"
+                classNamePrefix="select"
+              />
+            </div>
+
+            {/* Show picked labels */}
+            {selectedOptions.length > 0 && (
+              <p className="mt-2 text-sm text-center">
+                <strong>Also present:</strong>{" "}
+                {selectedOptions.map((o) => o.label).join(", ")}
+              </p>
+            )}
+
+            {/* Submit & Next */}
+            <div className="flex justify-center gap-4 mt-6">
               <Button
                 onClick={handleSubmit}
                 disabled={isCorrect === null || submitted}
@@ -142,9 +182,9 @@ export default function EvaluationPage() {
                 {submitted ? "Saved ✅" : "Submit"}
               </Button>
               <Button
-                variant="outline"
                 onClick={loadRandom}
                 disabled={!submitted}
+                variant="outline"
               >
                 Next
               </Button>
