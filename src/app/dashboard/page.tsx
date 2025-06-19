@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 interface Summary {
   totalEvals: number;
   userAccuracy: number; // 0–1
-  perLabelAccuracy: Record<string, number>; // e.g. { AA: 0.87, HC: 0.72, … }
 }
 
 export default function DashboardPage() {
@@ -32,7 +31,7 @@ export default function DashboardPage() {
     );
   }
 
-  const { totalEvals, userAccuracy, perLabelAccuracy } = summary;
+  const { totalEvals, userAccuracy } = summary;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -50,7 +49,7 @@ export default function DashboardPage() {
 
           <Card>
             <CardContent className="text-center">
-              <p className="text-lg">Model's Accuracy</p>
+              <p className="text-lg">Model Accuracy</p>
               <p className="text-3xl font-semibold">
                 {(userAccuracy * 100).toFixed(1)}%
               </p>

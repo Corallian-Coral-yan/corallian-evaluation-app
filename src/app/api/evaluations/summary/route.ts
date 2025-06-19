@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const user = url.searchParams.get("user") || "";
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const match: Record<string, any> = {};
   if (user) match.user = user;
 
