@@ -10,7 +10,7 @@ if (!MONGODB_URI) {
 let isConnected = false;
 
 declare global {
-  var _mongooseConnection: Promise<typeof mongoose> | undefined;
+  let _mongooseConnection: Promise<typeof mongoose> | undefined;
 }
 
 const cached = global._mongooseConnection;
