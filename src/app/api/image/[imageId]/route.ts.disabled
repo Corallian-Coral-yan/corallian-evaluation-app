@@ -1,25 +1,38 @@
-// src/app/api/image/[imageId]/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ImageModel } from "@/models/Image";
 
+// You can move this interface to a shared types file if you want!
+interface ImageDoc {
+  _id: string;
+  imageId: string;
+  filename: string;
+  maskFilename?: string;
+  tau?: string;
+  site?: string;
+  dateTaken?: Date;
+  actualLabel?: string;
+  predictedLabel?: string;
+  createdAt?: Date;
+}
+
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ imageId: string }> } // note params is a Promise
+  context: { params: { imageId: string } } // <-- FIXED
 ) {
   try {
-    const { imageId } = await context.params; // <-- await here
+    const { imageId } = context.params; // <-- No await needed
     await connectToDatabase();
 
-    const image = await ImageModel.findOne({ imageId }).lean();
+    const image = (await ImageModel.findOne({
+      imageId,
+    }).lean()) as ImageDoc | null; // <-- Type assertion
 
     if (!image) {
       return NextResponse.json({ error: "Image not found" }, { status: 404 });
     }
 
     const imageUrl = `/api/images/${image.filename}`;
-
     return NextResponse.json({ ...image, imageUrl });
   } catch (error) {
     console.error("❌ Failed to fetch image metadata:", error);
@@ -29,4 +42,3 @@ export async function GET(
     );
   }
 }
-

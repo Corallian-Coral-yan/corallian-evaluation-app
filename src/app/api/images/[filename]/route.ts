@@ -3,14 +3,13 @@ import fs from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import mime from "mime";
 
-// Adjust this to exactly where your images live:
 const IMAGE_DIR = path.join(process.cwd(), "coral-data", "images", "aa_not-aa");
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { filename: string } }
+  context: { params: { filename: string } }
 ) {
-  const { filename } = params;
+  const { filename } = context.params;
   console.log("🔍 Requested filename:", filename);
 
   let files: string[];

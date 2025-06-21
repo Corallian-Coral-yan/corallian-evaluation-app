@@ -9,7 +9,6 @@ const ImageSchema = new mongoose.Schema({
   dateTaken: Date,
   actualLabel: String,
   predictedLabel: String,
-  annotations: { type: Array, default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 
