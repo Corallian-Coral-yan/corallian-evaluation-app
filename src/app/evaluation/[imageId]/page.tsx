@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
 
 type CoralLabel = "AA" | "HC" | "SC" | "SP" | "DC" | "Unknown";
 
@@ -39,6 +40,8 @@ const onboardingSteps = [
 
 export default function VerifyPredictionPage() {
   const params = useParams();
+  const { data: session } = useSession();
+
   const imageId = Array.isArray(params?.imageId)
     ? params.imageId[0]
     : params?.imageId;
