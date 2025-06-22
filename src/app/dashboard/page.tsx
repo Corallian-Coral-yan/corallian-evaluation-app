@@ -35,28 +35,29 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="p-8 max-w-4xl mx-auto space-y-8">
-        <h2 className="text-2xl font-bold">Welcome, {session.user?.name}</h2>
+      <main className="px-4 py-8 sm:px-8 max-w-4xl mx-auto space-y-8">
+        <h2 className="text-xl sm:text-2xl font-bold">
+          Welcome, {session.user?.name}
+        </h2>
 
         {/* Snapshot Cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <Card>
             <CardContent className="text-center">
-              <p className="text-lg">My Evaluations</p>
-              <p className="text-3xl font-semibold">{totalEvals}</p>
+              <p className="text-base sm:text-lg">My Evaluations</p>
+              <p className="text-2xl sm:text-3xl font-semibold">{totalEvals}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="text-center">
-              <p className="text-lg">Model Accuracy</p>
-              <p className="text-3xl font-semibold">
+              <p className="text-base sm:text-lg">Model Accuracy</p>
+              <p className="text-2xl sm:text-3xl font-semibold">
                 {(userAccuracy * 100).toFixed(1)}%
               </p>
             </CardContent>
           </Card>
         </div>
-
       </main>
     </div>
   );

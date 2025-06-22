@@ -1,4 +1,3 @@
-// app/evaluation/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -100,21 +99,23 @@ export default function EvaluationPage() {
   }));
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-semibold">Evaluate Coral Prediction</h1>
+    <div className="max-w-4xl mx-auto px-2 sm:px-6 py-6 space-y-6">
+      <h1 className="text-2xl sm:text-3xl font-semibold text-center">
+        Evaluate Coral Prediction
+      </h1>
 
       <Card>
         <CardContent className="flex flex-col items-center gap-6">
           <img
             src={data.imageUrl}
             alt={data.imageId}
-            className="w-full rounded-lg shadow"
+            className="w-full max-w-full rounded-lg shadow"
             loading="lazy"
             style={{ aspectRatio: "16/9", objectFit: "contain" }}
           />
 
           <div className="w-full max-w-3xl space-y-2">
-            <p className="text-xl text-center">
+            <p className="text-lg sm:text-xl text-center">
               <strong>Predicted Label:</strong>{" "}
               <span
                 className={
@@ -130,11 +131,12 @@ export default function EvaluationPage() {
             </p>
 
             {/* ✅ Correct / ❌ Not Correct */}
-            <div className="flex justify-center gap-4 space-y-4">
+            <div className="flex flex-wrap justify-center gap-4">
               <Button
                 variant={isCorrect === true ? "default" : "outline"}
                 onClick={() => handleMark(true)}
                 disabled={submitted}
+                className="w-full sm:w-auto"
               >
                 ✅ Correct
               </Button>
@@ -142,6 +144,7 @@ export default function EvaluationPage() {
                 variant={isCorrect === false ? "destructive" : "outline"}
                 onClick={() => handleMark(false)}
                 disabled={submitted}
+                className="w-full sm:w-auto"
               >
                 ❌ Not Correct
               </Button>
@@ -162,22 +165,33 @@ export default function EvaluationPage() {
                 isDisabled={isCorrect === null || submitted}
                 className="basic-multi-select"
                 classNamePrefix="select"
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    minHeight: 44,
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                  }),
+                }}
               />
             </div>
 
             {/* Show picked labels */}
             {selectedOptions.length > 0 && (
-              <p className="mt-2 text-sm text-center">
+              <p className="mt-2 text-sm text-center break-words">
                 <strong>Also present:</strong>{" "}
                 {selectedOptions.map((o) => o.label).join(", ")}
               </p>
             )}
 
             {/* Submit & Next */}
-            <div className="flex justify-center gap-4 mt-6">
+            <div className="flex flex-wrap justify-center gap-4 mt-6">
               <Button
                 onClick={handleSubmit}
                 disabled={isCorrect === null || submitted}
+                className="w-full sm:w-auto"
               >
                 {submitted ? "Saved ✅" : "Submit"}
               </Button>
@@ -185,6 +199,7 @@ export default function EvaluationPage() {
                 onClick={loadRandom}
                 disabled={!submitted}
                 variant="outline"
+                className="w-full sm:w-auto"
               >
                 Next
               </Button>
