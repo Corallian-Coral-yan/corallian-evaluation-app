@@ -183,7 +183,9 @@ export default function VerifyPredictionPage() {
                           : "text-red-600 font-semibold"
                       }
                     >
-                      {prediction.actualLabel === "True" ? "AA" : "Not AA"}
+                      {prediction.predictedLabel.toLowerCase() === "true"
+                      ? "Not Coral"
+                      : "Coral"}
                     </span>
                   </p>
 

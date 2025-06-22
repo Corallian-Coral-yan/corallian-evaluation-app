@@ -10,20 +10,27 @@ if (!MONGODB_URI) {
 let isConnected = false;
 
 declare global {
+  // Augment the NodeJS.Global type to include _mongooseConnection
+  // This allows us to attach the connection to the global object
   let _mongooseConnection: Promise<typeof mongoose> | undefined;
 }
 
-const cached = global._mongooseConnection;
+// Use globalThis for better compatibility
+const globalWithMongoose = global as typeof global & {
+  _mongooseConnection?: Promise<typeof mongoose>;
+};
+
+const cached = globalWithMongoose._mongooseConnection;
 
 export async function connectToDatabase() {
   if (isConnected) return;
 
   if (!cached) {
-    global._mongooseConnection = mongoose.connect(MONGODB_URI, {
+    globalWithMongoose._mongooseConnection = mongoose.connect(MONGODB_URI, {
       dbName: MONGODB_DB_NAME,
     });
   }
 
-  await global._mongooseConnection;
+  await globalWithMongoose._mongooseConnection;
   isConnected = true;
 }

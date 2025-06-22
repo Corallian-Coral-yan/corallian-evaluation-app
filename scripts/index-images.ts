@@ -59,7 +59,6 @@ async function run() {
           imageId,
           filename: file,
           tau,
-          site: tau,
           dateTaken,
           actualLabel,
           predictedLabel,
