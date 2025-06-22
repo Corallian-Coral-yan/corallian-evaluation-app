@@ -161,7 +161,7 @@ export default function EvaluationPage() {
                 options={selectOptions}
                 value={selectedOptions}
                 onChange={(vals) => setSelectedOptions(vals)}
-                placeholder="Select one or more labels…"
+                placeholder="Select label/s…"
                 isDisabled={isCorrect === null || submitted}
                 className="basic-multi-select"
                 classNamePrefix="select"
